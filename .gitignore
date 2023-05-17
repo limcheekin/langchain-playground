@@ -164,3 +164,6 @@ books/
 db/
 deeplake/
 hkunlp/
+flax-sentence-embeddings/
+sentence-transformers/
+*.pkl
