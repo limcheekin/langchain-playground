@@ -14,13 +14,19 @@
 # Let's implement a very simple custom LLM that just returns the first N characters of the input.
 
 # %%
-from typing import Any, Union, List, Mapping, Optional
+"""Wrapper around CTranslate2 API."""
+import logging
+from typing import Any, Dict, List, Mapping, Optional
+from pydantic import Extra, Field, root_validator
+
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.llms.base import LLM
 
 import ctranslate2
 import transformers
 # %%
+
+logger = logging.getLogger(__name__)
 
 
 class Ct2Translator(LLM):
@@ -33,23 +39,48 @@ class Ct2Translator(LLM):
             translator = Ct2Translator(model_path="./ct2fast-flan-alpaca-xl")
     """
     model_path: str = None
-    n_threads: int = 1          # inter_threads
-    beam_size: int = 2
-    top_k: int = 1              # sampling_topk
-    temperature: float = 1      # sampling_temperature
-    repeat_penalty: float = 1   # repetition_penalty
-    no_repeat_ngram_size: int = 0
-    min_length: int = 1         # min_decoding_length
-    max_length: int = 256       # max_decoding_length
-
+    inter_threads: int = 1          # inter_threads
+    compute_type: str = "int8"
     translator: ctranslate2.Translator = None
     tokenizer: transformers.AutoTokenizer = None
 
-    def init(self):
+    model_kwargs: Dict[str, Any] = Field(default_factory=dict)
+    """Holds any model parameters valid for `create` call not
+    explicitly specified."""
+
+    class Config:
+        """Configuration for this pydantic config."""
+
+        extra = Extra.forbid
+
+    @root_validator(pre=True)
+    def build_extra(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Build extra kwargs from additional params that were passed in."""
+        all_required_field_names = {
+            field.alias for field in cls.__fields__.values()}
+
+        extra = values.get("model_kwargs", {})
+        for field_name in list(values):
+            if field_name not in all_required_field_names:
+                if field_name in extra:
+                    raise ValueError(f"Found {field_name} supplied twice.")
+                logger.warning(
+                    f"""{field_name} was transfered to model_kwargs.
+                    Please confirm that {field_name} is what you intended."""
+                )
+                extra[field_name] = values.pop(field_name)
+        values["model_kwargs"] = extra
+        return values
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+        self.model_path = kwargs.get("model_path")
+        self.inter_threads = kwargs.get("inter_threads", self.inter_threads)
+        self.compute_type = kwargs.get("compute_type", self.compute_type)
         self.translator = ctranslate2.Translator(
             model_path=self.model_path,
-            inter_threads=self.n_threads,
-            compute_type="int8"
+            inter_threads=self.inter_threads,
+            compute_type=self.compute_type
         )
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             self.model_path)
@@ -66,18 +97,11 @@ class Ct2Translator(LLM):
     ) -> str:
         if stop is not None:
             raise ValueError("stop kwargs are not permitted.")
-
         input_tokens = self.tokenizer.convert_ids_to_tokens(
             self.tokenizer.encode(prompt))
         results = self.translator.translate_batch(
             [input_tokens],
-            beam_size=self.beam_size,
-            sampling_topk=self.top_k,
-            sampling_temperature=self.temperature,
-            repetition_penalty=self.repeat_penalty,
-            no_repeat_ngram_size=self.no_repeat_ngram_size,
-            min_decoding_length=self.min_length,
-            max_decoding_length=self.max_length,
+            **self.model_kwargs
         )
         output_tokens = results[0].hypotheses[0]
         output_text = self.tokenizer.decode(
@@ -87,19 +111,11 @@ class Ct2Translator(LLM):
     @property
     def _identifying_params(self) -> Mapping[str, Any]:
         """Get the identifying parameters."""
-        return self._default_params()
-
-    def _default_params(self) -> Mapping[str, Any]:
         return {
-            "n_threads": self.n_threads,
-            "beam_size": self.beam_size,
-            "top_k": self.top_k,
-            "repeat_penalty": self.repeat_penalty,
-            "no_repeat_ngram_size": self.no_repeat_ngram_size,
-            "min_length": self.min_length,
-            "max_length": self.max_length,
-            "temperature": self.temperature,
+            "model_path": self.model_path,
+            "inter_threads": self.inter_threads,    # inter_threads
+            "compute_type": self.compute_type,
+            **{"model_kwargs": self.model_kwargs},
         }
-
 # %% [markdown]
 # We can now use this as an any other LLM.
