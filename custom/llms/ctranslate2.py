@@ -39,6 +39,7 @@ class Ct2Translator(LLM):
             translator = Ct2Translator(model_path="./ct2fast-flan-alpaca-xl")
     """
     model_path: str = None
+    tokenizer_path: str = None
     inter_threads: int = 1          # inter_threads
     compute_type: str = "int8"
     translator: ctranslate2.Translator = None
@@ -75,6 +76,7 @@ class Ct2Translator(LLM):
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
         self.model_path = kwargs.get("model_path")
+        self.tokenizer_path = kwargs.get("tokenizer_path") or self.model_path
         self.inter_threads = kwargs.get("inter_threads", self.inter_threads)
         self.compute_type = kwargs.get("compute_type", self.compute_type)
         self.translator = ctranslate2.Translator(
@@ -113,7 +115,8 @@ class Ct2Translator(LLM):
         """Get the identifying parameters."""
         return {
             "model_path": self.model_path,
-            "inter_threads": self.inter_threads,    # inter_threads
+            "tokenizer_path": self.tokenizer_path,
+            "inter_threads": self.inter_threads,
             "compute_type": self.compute_type,
             **{"model_kwargs": self.model_kwargs},
         }
