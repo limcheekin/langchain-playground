@@ -29,10 +29,10 @@ def ingest_data():
     print("Load data to FAISS store")
     # embeddings = HuggingFaceEmbeddings(
     #    model_name=EMBEDDINGS_MODEL_NAME)
-    model_name = ""
     model_kwargs = {'device': 'cpu', 'compute_type': "int8"}
     encode_kwargs = {'batch_size': 32,
-                     'convert_to_numpy': True, 'normalize_embeddings': True}
+                     'convert_to_numpy': True,
+                     'normalize_embeddings': True}
     embeddings = Ct2BertEmbeddings(
         model_name=EMBEDDINGS_MODEL_NAME,
         model_kwargs=model_kwargs,

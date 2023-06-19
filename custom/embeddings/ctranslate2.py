@@ -5,7 +5,7 @@ from pydantic import BaseModel, Extra, Field
 
 from langchain.embeddings.base import Embeddings
 
-DEFAULT_MODEL_NAME = "michaelfeil/ct2fast-e5-large-v2"
+DEFAULT_MODEL_NAME = "intfloat/e5-large-v2"
 
 
 class Ct2BertEmbeddings(BaseModel, Embeddings):
@@ -19,7 +19,7 @@ class Ct2BertEmbeddings(BaseModel, Embeddings):
 
             from custom.embeddings.ctranslate2 import Ct2BertEmbeddings
 
-            model_name = "e5-large-v2"
+            model_name = "intfloat/e5-large-v2"
             model_kwargs = {'device': 'cpu', 'compute_type':'int8'}
             encode_kwargs = {'batch_size': 32, 'convert_to_numpy': True, 'normalize_embeddings': True}
             embeddings = Ct2BertEmbeddings(
@@ -41,7 +41,7 @@ class Ct2BertEmbeddings(BaseModel, Embeddings):
         """Initialize the CTranslate2 BERT Encoder."""
         super().__init__(**kwargs)
         try:
-            from hf_hub_ctranslate2 import EncoderCT2fromHfHub
+            from hf_hub_ctranslate2 import CT2SentenceTransformer
 
         except ImportError as exc:
             raise ImportError(
@@ -49,7 +49,7 @@ class Ct2BertEmbeddings(BaseModel, Embeddings):
                 "Please install it with `pip install hf_hub_ctranslate2`."
             ) from exc
 
-        self.client = EncoderCT2fromHfHub(
+        self.client = CT2SentenceTransformer(
             model_name_or_path=self.model_name,
             **self.model_kwargs
         )
