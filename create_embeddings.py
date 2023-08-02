@@ -4,6 +4,7 @@ from langchain.vectorstores.faiss import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from custom.embeddings.ctranslate2 import Ct2BertEmbeddings
 from open.text.embeddings.openai import OpenAIEmbeddings
+from open.text.embeddings.huggingface import E5Embeddings
 import os
 import pickle
 
@@ -36,6 +37,10 @@ def ingest_data():
         print("Use universal-sentence-encoder model")
         embeddings = OpenAIEmbeddings(
             openai_api_base="http://localhost:8000/v1")
+    elif "e5" in EMBEDDINGS_MODEL_NAME:
+        print("Use E5Embeddings class")
+        encode_kwargs = {"normalize_embeddings": True}
+        embeddings = E5Embeddings(encode_kwargs=encode_kwargs)
     else:
         embeddings = HuggingFaceEmbeddings(
             model_name=EMBEDDINGS_MODEL_NAME)
